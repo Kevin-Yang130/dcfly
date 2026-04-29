@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.terraform
+terraform.tfstate*
+*.tfvars
+backend/.env
+backend/.venv
+backend/__pycache__
+backend/**/*.pyc
+backend/dcfly.db
+.DS_Store
