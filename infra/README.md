@@ -8,8 +8,7 @@ This deployment uses a simpler version of the class architecture:
 - ECS Fargate runs the FastAPI backend in private subnets.
 - An Application Load Balancer exposes the backend.
 - RDS PostgreSQL stores users and saved stocks.
-- Secrets Manager stores `DATABASE_URL`, `FMP_API_KEY`, `SECRET_KEY`, and `FRONTEND_ORIGINS`.
-- CloudWatch stores backend logs.
+- ECS task environment variables provide `DATABASE_URL`, `FMP_API_KEY`, `SECRET_KEY`, and `FRONTEND_ORIGINS`.
 
 Redis, Kubernetes, EKS, and Helm are intentionally omitted because this app does not need them.
 
@@ -59,8 +58,8 @@ aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 
 cd ../..
-docker build --platform linux/amd64 -t "$ECR_REPO:latest" -f backend/Dockerfile backend
-docker push "$ECR_REPO:latest"
+docker build --platform linux/amd64 -t "${ECR_REPO}:latest" -f backend/Dockerfile backend
+docker push "${ECR_REPO}:latest"
 ```
 
 ## 4. Apply Full Infrastructure
@@ -70,7 +69,7 @@ cd infra/tf
 terraform apply
 ```
 
-This creates the VPC, NAT Gateway, ALB, RDS, Secrets Manager secret, ECS service, and Amplify app.
+This creates the VPC, NAT Gateway, ALB, RDS, ECS service, and Amplify app.
 
 ## 5. Deploy Frontend
 
@@ -111,8 +110,8 @@ After code changes:
 
 ```bash
 cd ../..
-docker build --platform linux/amd64 -t "$ECR_REPO:latest" -f backend/Dockerfile backend
-docker push "$ECR_REPO:latest"
+docker build --platform linux/amd64 -t "${ECR_REPO}:latest" -f backend/Dockerfile backend
+docker push "${ECR_REPO}:latest"
 
 aws ecs update-service \
   --cluster "$(terraform -chdir=infra/tf output -raw ecs_cluster_name)" \

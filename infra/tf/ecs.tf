@@ -1,8 +1,3 @@
-resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/${local.name_prefix}-backend"
-  retention_in_days = 14
-}
-
 resource "aws_ecs_cluster" "main" {
   name = "${local.name_prefix}-cluster"
 }
@@ -29,33 +24,24 @@ resource "aws_ecs_task_definition" "backend" {
         }
       ]
 
-      secrets = [
+      environment = [
         {
-          name      = "DATABASE_URL"
-          valueFrom = "${aws_secretsmanager_secret.backend.arn}:DATABASE_URL::"
+          name  = "DATABASE_URL"
+          value = "postgresql+psycopg2://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/${var.db_name}"
         },
         {
-          name      = "FMP_API_KEY"
-          valueFrom = "${aws_secretsmanager_secret.backend.arn}:FMP_API_KEY::"
+          name  = "FMP_API_KEY"
+          value = var.fmp_api_key
         },
         {
-          name      = "SECRET_KEY"
-          valueFrom = "${aws_secretsmanager_secret.backend.arn}:SECRET_KEY::"
+          name  = "SECRET_KEY"
+          value = var.jwt_secret
         },
         {
-          name      = "FRONTEND_ORIGINS"
-          valueFrom = "${aws_secretsmanager_secret.backend.arn}:FRONTEND_ORIGINS::"
+          name  = "FRONTEND_ORIGINS"
+          value = join(",", local.frontend_origins)
         }
       ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.backend.name
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "backend"
-        }
-      }
     }
   ])
 }
@@ -82,6 +68,5 @@ resource "aws_ecs_service" "backend" {
   depends_on = [
     aws_lb_listener.http,
     aws_iam_role_policy_attachment.ecs_task_execution,
-    aws_iam_role_policy_attachment.ecs_secrets,
   ]
 }

@@ -38,11 +38,6 @@ output "rds_port" {
   value       = aws_db_instance.postgres.port
 }
 
-output "backend_secret_arn" {
-  description = "Secrets Manager secret ARN for backend runtime configuration."
-  value       = aws_secretsmanager_secret.backend.arn
-}
-
 output "amplify_app_id" {
   description = "Amplify app id."
   value       = aws_amplify_app.frontend.id
