@@ -1,14 +1,13 @@
 # DCFly AWS Deployment
 
-This deployment uses a simpler version of the class architecture:
+This deployment uses a backend-only version of the class architecture:
 
-- Amplify hosts the Vite frontend from GitHub.
-- Amplify proxies `/api/*` to the backend ALB, so the frontend can keep using relative `/api` calls.
 - ECR stores the backend Docker image.
 - ECS Fargate runs the FastAPI backend in private subnets.
 - An Application Load Balancer exposes the backend.
 - RDS PostgreSQL stores users and saved stocks.
 - ECS task environment variables provide `DATABASE_URL`, `FMP_API_KEY`, `SECRET_KEY`, and `FRONTEND_ORIGINS`.
+- The Vite frontend runs locally and proxies `/api` to the deployed backend ALB.
 
 Redis, Kubernetes, EKS, and Helm are intentionally omitted because this app does not need them.
 
@@ -24,8 +23,6 @@ Edit `terraform.tfvars`:
 - `db_password`: strong database password.
 - `jwt_secret`: at least 32 random characters.
 - `fmp_api_key`: your Financial Modeling Prep API key.
-- `github_repository`: your project repo URL.
-- `github_access_token`: a GitHub token Amplify can use to connect to the repo.
 
 Then initialize:
 
@@ -69,23 +66,21 @@ cd infra/tf
 terraform apply
 ```
 
-This creates the VPC, NAT Gateway, ALB, RDS, ECS service, and Amplify app.
+This creates the VPC, NAT Gateway, ALB, RDS, and ECS backend service.
 
-## 5. Deploy Frontend
+## 5. Run Frontend Locally Against AWS Backend
 
-Amplify is connected to your GitHub repo. It may start automatically after the branch is created. If it does not:
+Get the deployed backend URL:
 
 ```bash
-aws amplify start-job \
-  --app-id "$(terraform output -raw amplify_app_id)" \
-  --branch-name "main" \
-  --job-type RELEASE
+terraform output -raw backend_api_url
 ```
 
-Open:
+Run local Vite with its `/api` proxy pointed at the ALB:
 
 ```bash
-terraform output frontend_url
+cd ../..
+VITE_API_PROXY_TARGET="$(terraform -chdir=infra/tf output -raw backend_api_url)" npm run dev
 ```
 
 ## 6. Test
@@ -99,7 +94,7 @@ curl "$(terraform output -raw backend_api_url)/health"
 Frontend:
 
 ```bash
-open "$(terraform output -raw frontend_url)"
+open http://localhost:5173
 ```
 
 Test sign up, login, search for a stock, save it, sign out, sign back in, and confirm it appears in saved stocks.
@@ -121,7 +116,7 @@ aws ecs update-service \
 
 ## Route 53 And HTTPS
 
-The current setup is intentionally simple and class-project friendly. It uses Amplify's HTTPS domain for the frontend and an HTTP ALB behind an Amplify proxy for `/api/*`.
+The current setup is intentionally simple and class-project friendly. It exposes only the backend publicly and runs the frontend locally.
 
 When you have a custom domain, the production upgrade is:
 
@@ -129,8 +124,7 @@ When you have a custom domain, the production upgrade is:
 - ACM certificate for `api.yourdomain.com`.
 - HTTPS listener on the ALB.
 - Route 53 alias record pointing `api.yourdomain.com` to the ALB.
-- Amplify custom domain for the frontend.
-- Replace the Amplify `/api/*` proxy target with `https://api.yourdomain.com/api/<*>`.
+- Deploy the frontend with Amplify, S3 + CloudFront, or a second ECS service when your AWS account allows it.
 
 ## Cost Notes
 

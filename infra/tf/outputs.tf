@@ -38,17 +38,7 @@ output "rds_port" {
   value       = aws_db_instance.postgres.port
 }
 
-output "amplify_app_id" {
-  description = "Amplify app id."
-  value       = aws_amplify_app.frontend.id
-}
-
-output "amplify_default_domain" {
-  description = "Amplify default domain."
-  value       = aws_amplify_app.frontend.default_domain
-}
-
-output "frontend_url" {
-  description = "Amplify frontend URL."
-  value       = local.amplify_url
+output "local_frontend_command" {
+  description = "Command for running the local Vite frontend against the deployed backend."
+  value       = "VITE_API_PROXY_TARGET=http://${aws_lb.backend.dns_name} npm run dev"
 }

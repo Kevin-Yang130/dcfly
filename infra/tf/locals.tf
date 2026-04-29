@@ -5,13 +5,10 @@ locals {
   private_subnet_cidrs = ["10.30.10.0/24", "10.30.11.0/24"]
   db_subnet_cidrs      = ["10.30.20.0/24", "10.30.21.0/24"]
 
-  amplify_url = "https://${var.github_branch}.${aws_amplify_app.frontend.default_domain}"
-
   frontend_origins = concat(
     [
       "http://localhost:5173",
       "http://localhost:3000",
-      local.amplify_url,
     ],
     var.frontend_origins_extra,
   )

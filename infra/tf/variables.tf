@@ -105,20 +105,22 @@ variable "backend_desired_count" {
 }
 
 variable "github_repository" {
-  description = "GitHub repository URL for Amplify, for example https://github.com/USER/REPO."
+  description = "Unused in backend-only deployment. Kept to avoid tfvars warnings from earlier Amplify setup."
   type        = string
+  default     = ""
 }
 
 variable "github_branch" {
-  description = "Git branch Amplify should deploy."
+  description = "Unused in backend-only deployment. Kept to avoid tfvars warnings from earlier Amplify setup."
   type        = string
-  default     = "main"
+  default     = ""
 }
 
 variable "github_access_token" {
-  description = "GitHub token used by Amplify to connect to the repository. Store only in terraform.tfvars."
+  description = "Unused in backend-only deployment. Kept to avoid tfvars warnings from earlier Amplify setup."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "rds_instance_class" {

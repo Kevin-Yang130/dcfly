@@ -10,9 +10,5 @@ db_password = "replace-with-a-strong-db-password"
 jwt_secret  = "replace-with-at-least-32-random-characters"
 fmp_api_key = "replace-with-your-fmp-api-key"
 
-github_repository   = "https://github.com/YOUR_USERNAME/YOUR_REPO"
-github_branch       = "main"
-github_access_token = "github_pat_replace_me"
-
-# Optional: add custom frontend domains later after Route 53 + ACM are configured.
+# Optional: add frontend origins if you run local dev from another host/port.
 frontend_origins_extra = []
