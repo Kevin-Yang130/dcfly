@@ -100,4 +100,3 @@ The cloud version is designed around a FastAPI backend running on ECS Fargate, a
 
 For the class deployment, AWS account permissions limited some services, including Amplify and Secrets Manager. The architecture was adjusted to keep the backend on ECS/RDS/ALB, run the frontend locally, and pass backend environment variables through the ECS task definition.
 
-See `infra/README.md` for the AWS deployment steps.
