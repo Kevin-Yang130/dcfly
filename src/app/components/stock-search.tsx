@@ -12,17 +12,26 @@ export interface TimeFrameData {
   "10Y": number;
 }
 
+export interface AnnualFinancialData {
+  year: string;
+  earnings: number;
+  freeCashFlow: number;
+}
+
 export interface Stock {
   symbol: string;
   name: string;
   price: number;
+  earnings: number;
   eps: number;
   freeCashFlow: number;
   sharesOutstanding: number;
+  annualFinancials: AnnualFinancialData[];
   epsGrowthRate: TimeFrameData;
   fcfGrowthRate: TimeFrameData;
   cagr: TimeFrameData;
   peRatio: number;
+  priceFcfRatio: number;
 }
 
 interface StockSearchProps {

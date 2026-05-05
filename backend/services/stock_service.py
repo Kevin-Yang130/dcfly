@@ -77,7 +77,9 @@ def calc_growth_rates(values: List[float]) -> Dict[str, float]:
     return rates
 
 
-def fill_all_timeframes(rates: Dict[str, float], fallback: Dict[str, float]) -> Dict[str, float]:
+def fill_all_timeframes(
+    rates: Dict[str, float], fallback: Dict[str, float]
+) -> Dict[str, float]:
     result = dict(rates)
     for tf in ["TTM", "1Y", "3Y", "5Y", "7Y", "10Y"]:
         if tf not in result:
@@ -93,9 +95,18 @@ def _price_cagrs(historical: List[Dict], current_price: float) -> Dict[str, floa
     rates: Dict[str, float] = {}
     newest_date = datetime.fromisoformat(historical[0]["date"])
 
-    for label, years in [("TTM", 1), ("1Y", 1), ("3Y", 3), ("5Y", 5), ("7Y", 7), ("10Y", 10)]:
+    for label, years in [
+        ("TTM", 1),
+        ("1Y", 1),
+        ("3Y", 3),
+        ("5Y", 5),
+        ("7Y", 7),
+        ("10Y", 10),
+    ]:
         target = newest_date.replace(year=newest_date.year - years)
-        closest = min(historical, key=lambda x: abs(datetime.fromisoformat(x["date"]) - target))
+        closest = min(
+            historical, key=lambda x: abs(datetime.fromisoformat(x["date"]) - target)
+        )
         past_price = safe_float(closest.get("close", 0))
         c = calc_cagr_pct(past_price, current_price, years)
         if c is not None:
@@ -104,8 +115,23 @@ def _price_cagrs(historical: List[Dict], current_price: float) -> Dict[str, floa
     return rates
 
 
-_ETF_KEYWORDS = {"etf", "fund", "bear", "bull", "2x", "3x", "1x", "daily", "weekly",
-                  "strategy", "leveraged", "inverse", "tracker", "yield", "option"}
+_ETF_KEYWORDS = {
+    "etf",
+    "fund",
+    "bear",
+    "bull",
+    "2x",
+    "3x",
+    "1x",
+    "daily",
+    "weekly",
+    "strategy",
+    "leveraged",
+    "inverse",
+    "tracker",
+    "yield",
+    "option",
+}
 
 # Common aliases for companies whose ticker/name don't match the popular search term
 _ALIASES: Dict[str, str] = {
@@ -204,23 +230,39 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
         return fmp_get("/quote", {"symbol": symbol})
 
     def fetch_income():
-        return fmp_get("/income-statement", {"symbol": symbol, "limit": 5})
+        return fmp_get("/income-statement-ttm", {"symbol": symbol, "limit": 1})
 
     def fetch_cashflow():
-        return fmp_get("/cash-flow-statement", {"symbol": symbol, "limit": 5})
+        return fmp_get("/cash-flow-statement-ttm", {"symbol": symbol, "limit": 1})
+
+    def fetch_annual_income():
+        return fmp_get(
+            "/income-statement",
+            {"symbol": symbol, "period": "annual", "limit": 10},
+        )
+
+    def fetch_annual_cashflow():
+        return fmp_get(
+            "/cash-flow-statement",
+            {"symbol": symbol, "period": "annual", "limit": 10},
+        )
 
     def fetch_history():
-        return fmp_get("/historical-price-eod/full", {"symbol": symbol, "from": ten_years_ago})
+        return fmp_get(
+            "/historical-price-eod/full", {"symbol": symbol, "from": ten_years_ago}
+        )
 
     fetchers = {
         "quote": fetch_quote,
         "income": fetch_income,
         "cashflow": fetch_cashflow,
+        "annual_income": fetch_annual_income,
+        "annual_cashflow": fetch_annual_cashflow,
         "history": fetch_history,
     }
 
     api_results: Dict[str, Any] = {}
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=6) as executor:
         future_to_key = {executor.submit(fn): key for key, fn in fetchers.items()}
         for future in as_completed(future_to_key):
             key = future_to_key[future]
@@ -239,13 +281,15 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
 
     # --- Income statement: EPS history + shares outstanding ---
     income_stmts: List[Dict] = api_results.get("income") or []
-    eps_values = [safe_float(s.get("epsDiluted") or s.get("eps", 0)) for s in income_stmts]
+    eps_values = [
+        safe_float(s.get("epsDiluted") or s.get("eps", 0)) for s in income_stmts
+    ]
+    earnings = income_stmts[0]["netIncome"]
     eps_values = [v for v in eps_values if v != 0]
-
     current_eps = eps_values[0] if eps_values else 0.0
-    pe = round(price / current_eps, 1) if current_eps > 0 else 0.0
+    pe = round(price / current_eps, 2) if current_eps > 0 else 0.0
 
-    # Shares from the most recent income statement
+    # Shares from the TTM income statement
     shares = 0.0
     if income_stmts:
         shares = safe_float(income_stmts[0].get("weightedAverageShsOutDil", 0))
@@ -258,7 +302,36 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
     fcf_values = [v for v in fcf_values if v != 0]
 
     current_fcf = fcf_values[0] if fcf_values else 0.0
+    fcf_per_share = round(current_fcf / shares, 2) if shares > 0 else 0.0
+    price_fcf_ratio = round(price / fcf_per_share, 2) if current_fcf > 0 else 0.0
     fcf_rates = calc_growth_rates(fcf_values) if fcf_values else {}
+
+    # --- Annual financials: net income and FCF for the 10-year bar chart ---
+    annual_income: List[Dict] = api_results.get("annual_income") or []
+    annual_cashflow: List[Dict] = api_results.get("annual_cashflow") or []
+
+    cashflow_by_year = {
+        str(item.get("calendarYear") or item.get("date", "")[:4]): item
+        for item in annual_cashflow
+        if item.get("calendarYear") or item.get("date")
+    }
+    annual_financials: List[Dict[str, Any]] = []
+
+    for item in annual_income:
+        year = str(item.get("calendarYear") or item.get("date", "")[:4])
+        if not year or year not in cashflow_by_year:
+            continue
+
+        cashflow_item = cashflow_by_year[year]
+        annual_financials.append(
+            {
+                "year": year,
+                "earnings": safe_float(item.get("netIncome", 0)),
+                "freeCashFlow": safe_float(cashflow_item.get("freeCashFlow", 0)),
+            }
+        )
+
+    annual_financials = sorted(annual_financials, key=lambda item: item["year"])[-10:]
 
     # --- Historical prices: CAGR ---
     history_raw = api_results.get("history") or []
@@ -273,13 +346,19 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
         "symbol": symbol,
         "name": name,
         "price": round(price, 2),
+        "earnings": round(earnings, 2),
         "eps": round(current_eps, 2),
         "freeCashFlow": current_fcf,
         "sharesOutstanding": shares,
+        "annualFinancials": annual_financials,
         "epsGrowthRate": fill_all_timeframes(eps_rates, price_cagrs),
         "fcfGrowthRate": fill_all_timeframes(fcf_rates, price_cagrs),
-        "cagr": {**{k: 0.0 for k in ["TTM", "1Y", "3Y", "5Y", "7Y", "10Y"]}, **price_cagrs},
+        "cagr": {
+            **{k: 0.0 for k in ["TTM", "1Y", "3Y", "5Y", "7Y", "10Y"]},
+            **price_cagrs,
+        },
         "peRatio": pe,
+        "priceFcfRatio": price_fcf_ratio,
     }
 
     _set_cached(cache_key, result)

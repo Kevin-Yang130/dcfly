@@ -3,6 +3,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Stock } from "./stock-search";
+import { calculateDCFRemote } from "../../lib/api";
 
 interface DCFCalculatorProps {
   stock: Stock;
@@ -17,49 +18,59 @@ export function DCFCalculator({ stock }: DCFCalculatorProps) {
   const [chartData, setChartData] = useState<any[]>([]);
   const [intrinsicValue, setIntrinsicValue] = useState(0);
   const [intrinsicValuePerShare, setIntrinsicValuePerShare] = useState(0);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [calculationError, setCalculationError] = useState("");
 
   useEffect(() => {
-    calculateDCF();
-  }, [growthRate, discountRate, terminalGrowthRate, projectionYears, stock]);
+    let isCurrent = true;
 
-  const calculateDCF = () => {
-    const g = parseFloat(growthRate) / 100 || 0;
-    const r = parseFloat(discountRate) / 100 || 0;
-    const tg = parseFloat(terminalGrowthRate) / 100 || 0;
-    const years = parseInt(projectionYears) || 10;
+    async function calculateDCF() {
+      const years = parseInt(projectionYears) || 10;
+      const params = {
+        currentFCF: stock.freeCashFlow,
+        growthRate: parseFloat(growthRate) || 0,
+        discountRate: parseFloat(discountRate) || 0,
+        terminalGrowthRate: parseFloat(terminalGrowthRate) || 0,
+        projectionYears: years,
+        sharesOutstanding: stock.sharesOutstanding,
+      };
 
-    const currentFCF = stock.freeCashFlow;
-    const data = [];
-    let totalPresentValue = 0;
+      setIsCalculating(true);
+      setCalculationError("");
 
-    // Calculate projected cash flows and their present values
-    for (let year = 1; year <= years; year++) {
-      const projectedFCF = currentFCF * Math.pow(1 + g, year);
-      const presentValue = projectedFCF / Math.pow(1 + r, year);
-      totalPresentValue += presentValue;
+      try {
+        const result = await calculateDCFRemote(params);
+        if (!isCurrent) return;
 
-      data.push({
-        year: `Y${year}`,
-        projectedFCF: projectedFCF,
-        presentValue: presentValue,
-        displayFCF: (projectedFCF / 1e9).toFixed(2),
-        displayPV: (presentValue / 1e9).toFixed(2)
-      });
+        setChartData(
+          result.yearsData.map((item) => ({
+            ...item,
+            displayFCF: (item.projectedFCF / 1e9).toFixed(2),
+            displayPV: (item.presentValue / 1e9).toFixed(2),
+          })),
+        );
+        setIntrinsicValue(result.enterpriseValue);
+        setIntrinsicValuePerShare(result.intrinsicValuePerShare);
+      } catch (error) {
+        if (!isCurrent) return;
+
+        setCalculationError(error instanceof Error ? error.message : "DCF calculation failed");
+        setChartData([]);
+        setIntrinsicValue(0);
+        setIntrinsicValuePerShare(0);
+      } finally {
+        if (isCurrent) {
+          setIsCalculating(false);
+        }
+      }
     }
 
-    // Calculate Terminal Value
-    const finalYearFCF = currentFCF * Math.pow(1 + g, years);
-    const terminalValue = (finalYearFCF * (1 + tg)) / (r - tg);
-    const terminalValuePV = terminalValue / Math.pow(1 + r, years);
+    calculateDCF();
 
-    // Total Intrinsic Value (Enterprise Value)
-    const totalIntrinsicValue = totalPresentValue + terminalValuePV;
-    const valuePerShare = totalIntrinsicValue / stock.sharesOutstanding;
-
-    setChartData(data);
-    setIntrinsicValue(totalIntrinsicValue);
-    setIntrinsicValuePerShare(valuePerShare);
-  };
+    return () => {
+      isCurrent = false;
+    };
+  }, [growthRate, discountRate, terminalGrowthRate, projectionYears, stock]);
 
   const upside = ((intrinsicValuePerShare - stock.price) / stock.price) * 100;
   const mosPercentage = parseFloat(marginOfSafety) || 0;
@@ -179,7 +190,17 @@ export function DCFCalculator({ stock }: DCFCalculatorProps) {
 
         {/* Intrinsic Value Display */}
         <div>
-          <h3 className="text-gray-900 mb-6">Valuation Results</h3>
+          <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h3 className="text-gray-900">Valuation Results</h3>
+            {isCalculating && (
+              <div className="text-sm text-gray-500">Calculating...</div>
+            )}
+          </div>
+          {calculationError && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {calculationError}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-sm text-emerald-700 mb-2">Intrinsic Value per Share</div>

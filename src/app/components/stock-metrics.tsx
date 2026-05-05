@@ -1,5 +1,24 @@
 import { useState } from "react";
-import { Activity, BarChart3, DollarSign, Loader2, Star } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  CircleDollarSign,
+  DollarSign,
+  Loader2,
+  Star,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type { Stock, TimeFrameData } from "./stock-search";
 
 type TimeFrame = keyof TimeFrameData;
@@ -9,6 +28,122 @@ interface StockMetricsProps {
   isSaved?: boolean;
   isSaving?: boolean;
   onToggleSave?: () => void;
+}
+
+function formatCurrencyCompact(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatNumberCompact(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatBillions(value: number) {
+  return `$${(value / 1e9).toFixed(1)}B`;
+}
+
+function MetricCard({
+  Icon,
+  label,
+  value,
+  valueClassName = "text-gray-900",
+}: {
+  Icon: LucideIcon;
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Icon className="h-5 w-5 text-emerald-600" />
+        <span className="text-sm text-gray-600">{label}</span>
+      </div>
+      <div className={`text-3xl font-semibold ${valueClassName}`}>{value}</div>
+    </div>
+  );
+}
+
+function AnnualFinancialsChart({ stock }: { stock: Stock }) {
+  const chartData = stock.annualFinancials.map((item) => ({
+    year: item.year,
+    earningsBillions: item.earnings / 1e9,
+    freeCashFlowBillions: item.freeCashFlow / 1e9,
+  }));
+  const latestAnnualFinancial = stock.annualFinancials.at(-1);
+
+  if (chartData.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-10 border-t border-gray-200 pt-8">
+      <div className="mb-6">
+        <h3 className="text-gray-900">Annual FCF and Earnings</h3>
+      </div>
+
+      <div className="h-96">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis
+              dataKey="year"
+              stroke="#6b7280"
+              style={{ fontSize: "14px" }}
+            />
+            <YAxis
+              stroke="#6b7280"
+              style={{ fontSize: "14px" }}
+              tickFormatter={(value) => `$${value}B`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                padding: "12px",
+              }}
+              formatter={(value: number, name: string) => {
+                const label =
+                  name === "freeCashFlowBillions" ? "Free Cash Flow" : "Earnings";
+                return [`$${value.toFixed(2)}B`, label];
+              }}
+            />
+            <Legend
+              formatter={(value) =>
+                value === "freeCashFlowBillions" ? "Free Cash Flow" : "Earnings"
+              }
+            />
+            <Bar
+              dataKey="freeCashFlowBillions"
+              fill="#10b981"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="earningsBillions"
+              fill="#2563eb"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {latestAnnualFinancial && (
+        <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-gray-600 sm:grid-cols-2">
+          <div>Latest annual FCF: {formatBillions(latestAnnualFinancial.freeCashFlow)}</div>
+          <div>Latest annual earnings: {formatBillions(latestAnnualFinancial.earnings)}</div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function StockMetrics({
@@ -22,6 +157,65 @@ export function StockMetrics({
   const [cagrTimeFrame, setCagrTimeFrame] = useState<TimeFrame>("1Y");
 
   const timeFrames: TimeFrame[] = ["TTM", "1Y", "3Y", "5Y", "7Y", "10Y"];
+
+  const summaryMetrics = [
+    {
+      label: "Stock Price",
+      value: `$${stock.price.toFixed(2)}`,
+      Icon: DollarSign,
+    },
+    {
+      label: "Earnings",
+      value: formatCurrencyCompact(stock.earnings),
+      Icon: DollarSign,
+    },
+    {
+      label: "EPS",
+      value: `$${stock.eps.toFixed(2)}`,
+      Icon: Activity,
+    },
+    {
+      label: "P/E Ratio",
+      value: stock.peRatio.toFixed(2),
+      Icon: BarChart3,
+    },
+    {
+      label: "Current FCF",
+      value: formatCurrencyCompact(stock.freeCashFlow),
+      Icon: CircleDollarSign,
+    },
+    {
+      label: "P/FCF Ratio",
+      value: stock.priceFcfRatio.toFixed(2),
+      Icon: CircleDollarSign,
+    },
+    {
+      label: "Shares Outstanding",
+      value: formatNumberCompact(stock.sharesOutstanding),
+      Icon: Users,
+    },
+  ];
+
+  const growthMetrics = [
+    {
+      label: "EPS Growth Rate",
+      value: stock.epsGrowthRate[epsTimeFrame],
+      timeFrame: epsTimeFrame,
+      onTimeFrameChange: setEpsTimeFrame,
+    },
+    {
+      label: "FCF Growth Rate",
+      value: stock.fcfGrowthRate[fcfTimeFrame],
+      timeFrame: fcfTimeFrame,
+      onTimeFrameChange: setFcfTimeFrame,
+    },
+    {
+      label: "CAGR",
+      value: stock.cagr[cagrTimeFrame],
+      timeFrame: cagrTimeFrame,
+      onTimeFrameChange: setCagrTimeFrame,
+    },
+  ];
 
   const TimeFrameSelector = ({
     value,
@@ -82,76 +276,31 @@ export function StockMetrics({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {/* Stock Price */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-emerald-600" />
-            <span className="text-sm text-gray-600">Stock Price</span>
-          </div>
-          <div className="text-3xl font-semibold text-gray-900">
-            ${stock.price.toFixed(2)}
-          </div>
-        </div>
-
-        {/* EPS */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-emerald-600" />
-            <span className="text-sm text-gray-600">EPS</span>
-          </div>
-          <div className="text-3xl font-semibold text-gray-900">
-            ${stock.eps.toFixed(2)}
-          </div>
-        </div>
-
-        {/* P/E Ratio */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-emerald-600" />
-            <span className="text-sm text-gray-600">P/E Ratio</span>
-          </div>
-          <div className="text-3xl font-semibold text-gray-900">
-            {stock.peRatio.toFixed(1)}
-          </div>
-        </div>
-
-        {/* EPS Growth Rate with Time Frame */}
-        <div className="space-y-3">
-          <TimeFrameSelector
-            value={epsTimeFrame}
-            onChange={setEpsTimeFrame}
-            label="EPS Growth Rate"
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+        {summaryMetrics.map((metric) => (
+          <MetricCard
+            key={metric.label}
+            Icon={metric.Icon}
+            label={metric.label}
+            value={metric.value}
           />
-          <div className="text-3xl font-semibold text-emerald-600">
-            {stock.epsGrowthRate[epsTimeFrame].toFixed(1)}%
-          </div>
-        </div>
+        ))}
 
-        {/* FCF Growth Rate with Time Frame */}
-        <div className="space-y-3">
-          <TimeFrameSelector
-            value={fcfTimeFrame}
-            onChange={setFcfTimeFrame}
-            label="FCF Growth Rate"
-          />
-          <div className="text-3xl font-semibold text-emerald-600">
-            {stock.fcfGrowthRate[fcfTimeFrame].toFixed(1)}%
+        {growthMetrics.map((metric) => (
+          <div key={metric.label} className="space-y-3">
+            <TimeFrameSelector
+              value={metric.timeFrame}
+              onChange={metric.onTimeFrameChange}
+              label={metric.label}
+            />
+            <div className="text-3xl font-semibold text-emerald-600">
+              {metric.value.toFixed(1)}%
+            </div>
           </div>
-        </div>
-
-        {/* CAGR with Time Frame */}
-        <div className="space-y-3">
-          <TimeFrameSelector
-            value={cagrTimeFrame}
-            onChange={setCagrTimeFrame}
-            label="CAGR"
-          />
-          <div className="text-3xl font-semibold text-emerald-600">
-            {stock.cagr[cagrTimeFrame].toFixed(1)}%
-          </div>
-        </div>
+        ))}
       </div>
+
+      <AnnualFinancialsChart stock={stock} />
     </div>
   );
 }
