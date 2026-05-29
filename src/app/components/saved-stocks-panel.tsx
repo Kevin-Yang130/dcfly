@@ -6,6 +6,7 @@ interface SavedStocksPanelProps {
   selectedSymbol?: string;
   isLoading: boolean;
   onSelectSymbol: (symbol: string) => void;
+  variant?: "default" | "inline";
 }
 
 export function SavedStocksPanel({
@@ -13,23 +14,14 @@ export function SavedStocksPanel({
   selectedSymbol,
   isLoading,
   onSelectSymbol,
+  variant = "default",
 }: SavedStocksPanelProps) {
-  return (
-    <section className="w-full max-w-6xl mx-auto bg-white/90 border border-gray-200 rounded-2xl shadow-sm p-5">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-          <h3 className="text-gray-900">Saved Stocks</h3>
-        </div>
-        {isLoading && <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />}
-      </div>
-
-      {savedStocks.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          Saved stocks will appear here after you star a company.
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
+  if (variant === "inline") {
+    if (savedStocks.length === 0) return null;
+    return (
+      <div>
+        <p className="eyebrow mb-3 text-center">Your watchlist</p>
+        <div className="flex flex-wrap items-center justify-center gap-1.5">
           {savedStocks.map((stock) => {
             const isSelected = stock.symbol === selectedSymbol;
             return (
@@ -37,14 +29,58 @@ export function SavedStocksPanel({
                 key={stock.symbol}
                 type="button"
                 onClick={() => onSelectSymbol(stock.symbol)}
-                className={`min-w-24 rounded-lg border px-3 py-2 text-left transition ${
+                title={stock.name}
+                className={`tabular rounded-full border px-3 py-1 text-xs font-medium transition ${
                   isSelected
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-emerald-50"
+                    ? "border-accent/40 bg-accent-soft text-accent-ink"
+                    : "border-hairline bg-paper-elevated text-ink-soft hover:border-hairline-strong hover:text-ink"
                 }`}
               >
-                <div className="text-sm font-semibold">{stock.symbol}</div>
-                <div className="max-w-40 truncate text-xs text-gray-500">{stock.name}</div>
+                {stock.symbol}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-hairline bg-paper-elevated px-5 py-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+          <p className="eyebrow">Watchlist</p>
+        </div>
+        {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-ink-muted" />}
+      </div>
+
+      {savedStocks.length === 0 ? (
+        <p className="text-xs text-ink-muted">
+          Star a company to keep it close at hand.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {savedStocks.map((stock) => {
+            const isSelected = stock.symbol === selectedSymbol;
+            return (
+              <button
+                key={stock.symbol}
+                type="button"
+                onClick={() => onSelectSymbol(stock.symbol)}
+                title={stock.name}
+                className={`group flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition ${
+                  isSelected
+                    ? "border-accent/40 bg-accent-soft text-accent-ink"
+                    : "border-hairline bg-paper text-ink-soft hover:border-hairline-strong hover:text-ink"
+                }`}
+              >
+                <span className="tabular text-xs font-semibold tracking-wide">
+                  {stock.symbol}
+                </span>
+                <span className="hidden max-w-[140px] truncate text-[11px] text-ink-muted group-hover:text-ink-soft sm:inline">
+                  {stock.name}
+                </span>
               </button>
             );
           })}

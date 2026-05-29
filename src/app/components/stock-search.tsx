@@ -1,21 +1,26 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Loader2 } from "lucide-react";
-import { Input } from "./ui/input";
 import { searchStocks, fetchStock, type SearchResult } from "../../lib/api";
 
 export interface TimeFrameData {
-  TTM: number;
-  "1Y": number;
-  "3Y": number;
-  "5Y": number;
-  "7Y": number;
-  "10Y": number;
+  "1Y": number | null;
+  "3Y": number | null;
+  "5Y": number | null;
+  "7Y": number | null;
+  "10Y": number | null;
 }
 
 export interface AnnualFinancialData {
   year: string;
+  date?: string;
   earnings: number;
   freeCashFlow: number;
+}
+
+export interface GrowthRateSet {
+  earnings: TimeFrameData;
+  eps?: TimeFrameData;
+  fcf: TimeFrameData;
 }
 
 export interface Stock {
@@ -27,11 +32,20 @@ export interface Stock {
   freeCashFlow: number;
   sharesOutstanding: number;
   annualFinancials: AnnualFinancialData[];
+  growthRates?: {
+    fiscalYear: GrowthRateSet;
+  };
+  earningsGrowthRate?: TimeFrameData;
   epsGrowthRate: TimeFrameData;
   fcfGrowthRate: TimeFrameData;
   cagr: TimeFrameData;
   peRatio: number;
   priceFcfRatio: number;
+  fcfPayoutRatio?: number | null;
+  cash?: number;
+  totalDebt?: number;
+  netDebt?: number;
+  netDebtFcfRatio?: number | null;
 }
 
 interface StockSearchProps {
@@ -96,48 +110,55 @@ export function StockSearch({ onSelectStock }: StockSearchProps) {
     }
   };
 
+  const isBusy = isSearching || isLoadingStock;
+
   return (
-    <div className="relative w-full max-w-2xl mx-auto">
-      <div className="relative">
-        {isSearching || isLoadingStock ? (
-          <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 animate-spin" />
-        ) : (
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-        )}
-        <Input
+    <div className="relative mx-auto w-full max-w-2xl">
+      <div className="group relative">
+        <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
+          {isBusy ? (
+            <Loader2 className="h-[18px] w-[18px] animate-spin text-accent" />
+          ) : (
+            <Search className="h-[18px] w-[18px] text-ink-subtle transition-colors group-focus-within:text-ink-muted" />
+          )}
+        </div>
+        <input
           type="text"
-          placeholder="Search for a stock (e.g., AAPL, Microsoft)"
+          placeholder="Search a ticker or company  ·  e.g. AAPL, Microsoft"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setShowResults(true)}
           onBlur={() => setTimeout(() => setShowResults(false), 150)}
-          className="w-full pl-12 pr-4 py-6 bg-white border border-gray-200 rounded-2xl shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+          spellCheck={false}
+          autoComplete="off"
+          className="h-12 w-full rounded-lg border border-hairline bg-paper-elevated pl-11 pr-4 text-[0.95rem] text-ink placeholder:text-ink-subtle outline-none transition focus:border-hairline-strong focus:ring-2 focus:ring-accent/15"
         />
       </div>
 
       {error && (
-        <p className="mt-2 text-sm text-red-500 text-center">{error}</p>
+        <p className="mt-3 text-center text-xs text-bear">{error}</p>
       )}
 
       {showResults && results.length > 0 && (
-        <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-lg border border-hairline bg-paper-elevated shadow-[0_8px_28px_-12px_rgba(26,24,21,0.18)]">
+          <div className="border-b border-hairline px-4 py-2">
+            <span className="eyebrow">Results</span>
+          </div>
           {results.map((r) => (
             <button
               key={r.symbol}
               onMouseDown={() => handleSelect(r)}
-              className="w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="group/item flex w-full items-center justify-between gap-4 border-b border-hairline px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted"
             >
-              <div className="flex justify-between items-center">
-                <div>
-                  <div className="font-medium text-gray-900">{r.symbol}</div>
-                  <div className="text-sm text-gray-500">{r.name}</div>
-                </div>
-                {r.price > 0 && (
-                  <div className="text-gray-900 font-medium">
-                    ${r.price.toFixed(2)}
-                  </div>
-                )}
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-ink">{r.symbol}</div>
+                <div className="truncate text-[13px] text-ink-muted">{r.name}</div>
               </div>
+              {r.price > 0 && (
+                <div className="tabular text-sm font-medium text-ink-soft">
+                  ${r.price.toFixed(2)}
+                </div>
+              )}
             </button>
           ))}
         </div>

@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 .DS_Store
 .terraform/
+.claude/
 .terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup

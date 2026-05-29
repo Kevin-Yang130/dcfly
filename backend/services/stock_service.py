@@ -18,6 +18,7 @@ _cache: Dict[str, Tuple[Any, float]] = {}
 CACHE_TTL = 300
 
 US_EXCHANGES = {"NYSE", "NASDAQ", "AMEX", "NYSEArca", "CBOE"}
+TIME_FRAMES = ["1Y", "3Y", "5Y", "7Y", "10Y"]
 
 
 def _get_cached(key: str) -> Optional[Any]:
@@ -59,17 +60,27 @@ def calc_cagr_pct(start: float, end: float, years: float) -> Optional[float]:
         return None
 
 
+def calc_yoy_pct(start: float, end: float) -> Optional[float]:
+    if start == 0:
+        return None
+    try:
+        return round(((end - start) / abs(start)) * 100, 1)
+    except Exception:
+        return None
+
+
 def calc_growth_rates(values: List[float]) -> Dict[str, float]:
-    """Compute YoY and CAGR growth rates from values list (newest → oldest)."""
+    """Compute fiscal-year YoY and CAGR rates from values list (newest → oldest)."""
     rates: Dict[str, float] = {}
     n = len(values)
 
-    if n >= 2 and values[1] != 0:
-        rates["TTM"] = round((values[0] / values[1] - 1) * 100, 1)
-        rates["1Y"] = rates["TTM"]
+    if n >= 2:
+        one_year = calc_yoy_pct(values[1], values[0])
+        if one_year is not None:
+            rates["1Y"] = one_year
 
     for label, years in [("3Y", 3), ("5Y", 5), ("7Y", 7), ("10Y", 10)]:
-        if n >= years + 1 and values[years] > 0:
+        if n >= years + 1:
             c = calc_cagr_pct(values[years], values[0], years)
             if c is not None:
                 rates[label] = c
@@ -77,14 +88,40 @@ def calc_growth_rates(values: List[float]) -> Dict[str, float]:
     return rates
 
 
-def fill_all_timeframes(
-    rates: Dict[str, float], fallback: Dict[str, float]
-) -> Dict[str, float]:
-    result = dict(rates)
-    for tf in ["TTM", "1Y", "3Y", "5Y", "7Y", "10Y"]:
-        if tf not in result:
-            result[tf] = fallback.get(tf) or result.get("1Y") or result.get("3Y") or 0.0
-    return result
+def _annual_year(item: Dict[str, Any]) -> str:
+    return str(item.get("calendarYear") or item.get("date", "")[:4])
+
+
+def _dividends_paid(item: Dict[str, Any]) -> float:
+    return abs(
+        safe_float(
+            item.get("dividendsPaid")
+            or item.get("cashDividendsPaid")
+            or item.get("commonDividendsPaid", 0)
+        )
+    )
+
+
+def _cash_balance(item: Dict[str, Any]) -> float:
+    return safe_float(
+        item.get("cashAndCashEquivalents")
+        or item.get("cashAndShortTermInvestments")
+        or item.get("cash", 0)
+    )
+
+
+def _total_debt(item: Dict[str, Any]) -> float:
+    total_debt = safe_float(item.get("totalDebt", 0))
+    if total_debt != 0:
+        return total_debt
+
+    return safe_float(item.get("shortTermDebt", 0)) + safe_float(
+        item.get("longTermDebt", 0)
+    )
+
+
+def fill_all_timeframes(rates: Dict[str, float]) -> Dict[str, Optional[float]]:
+    return {tf: rates.get(tf) for tf in TIME_FRAMES}
 
 
 def _price_cagrs(historical: List[Dict], current_price: float) -> Dict[str, float]:
@@ -95,14 +132,7 @@ def _price_cagrs(historical: List[Dict], current_price: float) -> Dict[str, floa
     rates: Dict[str, float] = {}
     newest_date = datetime.fromisoformat(historical[0]["date"])
 
-    for label, years in [
-        ("TTM", 1),
-        ("1Y", 1),
-        ("3Y", 3),
-        ("5Y", 5),
-        ("7Y", 7),
-        ("10Y", 10),
-    ]:
+    for label, years in [("1Y", 1), ("3Y", 3), ("5Y", 5), ("7Y", 7), ("10Y", 10)]:
         target = newest_date.replace(year=newest_date.year - years)
         closest = min(
             historical, key=lambda x: abs(datetime.fromisoformat(x["date"]) - target)
@@ -229,22 +259,22 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
     def fetch_quote():
         return fmp_get("/quote", {"symbol": symbol})
 
-    def fetch_income():
-        return fmp_get("/income-statement-ttm", {"symbol": symbol, "limit": 1})
-
-    def fetch_cashflow():
-        return fmp_get("/cash-flow-statement-ttm", {"symbol": symbol, "limit": 1})
-
     def fetch_annual_income():
         return fmp_get(
             "/income-statement",
-            {"symbol": symbol, "period": "annual", "limit": 10},
+            {"symbol": symbol, "period": "annual", "limit": 11},
         )
 
     def fetch_annual_cashflow():
         return fmp_get(
             "/cash-flow-statement",
-            {"symbol": symbol, "period": "annual", "limit": 10},
+            {"symbol": symbol, "period": "annual", "limit": 11},
+        )
+
+    def fetch_annual_balance_sheet():
+        return fmp_get(
+            "/balance-sheet-statement",
+            {"symbol": symbol, "period": "annual", "limit": 1},
         )
 
     def fetch_history():
@@ -254,15 +284,14 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
 
     fetchers = {
         "quote": fetch_quote,
-        "income": fetch_income,
-        "cashflow": fetch_cashflow,
         "annual_income": fetch_annual_income,
         "annual_cashflow": fetch_annual_cashflow,
+        "annual_balance_sheet": fetch_annual_balance_sheet,
         "history": fetch_history,
     }
 
     api_results: Dict[str, Any] = {}
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_key = {executor.submit(fn): key for key, fn in fetchers.items()}
         for future in as_completed(future_to_key):
             key = future_to_key[future]
@@ -279,46 +308,75 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
     price = safe_float(q.get("price", 0))
     name = q.get("name", symbol)
 
-    # --- Income statement: EPS history + shares outstanding ---
-    income_stmts: List[Dict] = api_results.get("income") or []
-    eps_values = [
-        safe_float(s.get("epsDiluted") or s.get("eps", 0)) for s in income_stmts
-    ]
-    earnings = income_stmts[0]["netIncome"]
-    eps_values = [v for v in eps_values if v != 0]
-    current_eps = eps_values[0] if eps_values else 0.0
-    pe = round(price / current_eps, 2) if current_eps > 0 else 0.0
-
-    # Shares from the TTM income statement
-    shares = 0.0
-    if income_stmts:
-        shares = safe_float(income_stmts[0].get("weightedAverageShsOutDil", 0))
-
-    eps_rates = calc_growth_rates(eps_values) if eps_values else {}
-
-    # --- Cash flow: FCF history ---
-    cf_stmts: List[Dict] = api_results.get("cashflow") or []
-    fcf_values = [safe_float(s.get("freeCashFlow", 0)) for s in cf_stmts]
-    fcf_values = [v for v in fcf_values if v != 0]
-
-    current_fcf = fcf_values[0] if fcf_values else 0.0
-    fcf_per_share = round(current_fcf / shares, 2) if shares > 0 else 0.0
-    price_fcf_ratio = round(price / fcf_per_share, 2) if current_fcf > 0 else 0.0
-    fcf_rates = calc_growth_rates(fcf_values) if fcf_values else {}
-
-    # --- Annual financials: net income and FCF for the 10-year bar chart ---
+    # --- Annual financials: current metrics, growth rates, and bar chart ---
     annual_income: List[Dict] = api_results.get("annual_income") or []
     annual_cashflow: List[Dict] = api_results.get("annual_cashflow") or []
+    annual_balance_sheet: List[Dict] = api_results.get("annual_balance_sheet") or []
+    annual_income_newest_first = sorted(
+        annual_income,
+        key=_annual_year,
+        reverse=True,
+    )
+    annual_cashflow_newest_first = sorted(
+        annual_cashflow,
+        key=_annual_year,
+        reverse=True,
+    )
+
+    latest_annual_income = annual_income_newest_first[0] if annual_income_newest_first else {}
+    latest_annual_cashflow = (
+        annual_cashflow_newest_first[0] if annual_cashflow_newest_first else {}
+    )
+    latest_annual_balance_sheet = (
+        annual_balance_sheet[0] if annual_balance_sheet else {}
+    )
+
+    earnings = safe_float(latest_annual_income.get("netIncome", 0))
+    current_eps = safe_float(
+        latest_annual_income.get("epsDiluted") or latest_annual_income.get("eps", 0)
+    )
+    pe = round(price / current_eps, 2) if current_eps > 0 else 0.0
+
+    shares = safe_float(
+        latest_annual_income.get("weightedAverageShsOutDil")
+        or latest_annual_income.get("weightedAverageShsOut", 0)
+    )
+
+    current_fcf = safe_float(latest_annual_cashflow.get("freeCashFlow", 0))
+    fcf_per_share = round(current_fcf / shares, 2) if shares > 0 else 0.0
+    price_fcf_ratio = round(price / fcf_per_share, 2) if fcf_per_share > 0 else 0.0
+    dividends_paid = _dividends_paid(latest_annual_cashflow)
+    fcf_payout_ratio = (
+        round((dividends_paid / current_fcf) * 100, 1) if current_fcf > 0 else None
+    )
+    cash = _cash_balance(latest_annual_balance_sheet)
+    total_debt = _total_debt(latest_annual_balance_sheet)
+    net_debt = total_debt - cash
+    net_debt_fcf_ratio = round(net_debt / current_fcf, 2) if current_fcf > 0 else None
+
+    annual_earnings_values = [
+        safe_float(item.get("netIncome", 0))
+        for item in annual_income_newest_first
+    ]
+    annual_earnings_values = [value for value in annual_earnings_values if value != 0]
+
+    annual_fcf_values = [
+        safe_float(item.get("freeCashFlow", 0)) for item in annual_cashflow_newest_first
+    ]
+    annual_fcf_values = [value for value in annual_fcf_values if value != 0]
+
+    fiscal_earnings_rates = (
+        calc_growth_rates(annual_earnings_values) if annual_earnings_values else {}
+    )
+    fiscal_fcf_rates = calc_growth_rates(annual_fcf_values) if annual_fcf_values else {}
 
     cashflow_by_year = {
-        str(item.get("calendarYear") or item.get("date", "")[:4]): item
-        for item in annual_cashflow
-        if item.get("calendarYear") or item.get("date")
+        _annual_year(item): item for item in annual_cashflow if _annual_year(item)
     }
     annual_financials: List[Dict[str, Any]] = []
 
     for item in annual_income:
-        year = str(item.get("calendarYear") or item.get("date", "")[:4])
+        year = _annual_year(item)
         if not year or year not in cashflow_by_year:
             continue
 
@@ -331,7 +389,11 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
             }
         )
 
-    annual_financials = sorted(annual_financials, key=lambda item: item["year"])[-10:]
+    annual_financials = sorted(annual_financials, key=lambda item: item["year"])[-11:]
+    fiscal_growth_rates = {
+        "earnings": fill_all_timeframes(fiscal_earnings_rates),
+        "fcf": fill_all_timeframes(fiscal_fcf_rates),
+    }
 
     # --- Historical prices: CAGR ---
     history_raw = api_results.get("history") or []
@@ -351,14 +413,26 @@ def get_stock_data(symbol: str) -> Optional[Dict[str, Any]]:
         "freeCashFlow": current_fcf,
         "sharesOutstanding": shares,
         "annualFinancials": annual_financials,
-        "epsGrowthRate": fill_all_timeframes(eps_rates, price_cagrs),
-        "fcfGrowthRate": fill_all_timeframes(fcf_rates, price_cagrs),
+        "growthRates": {
+            "fiscalYear": {
+                **fiscal_growth_rates,
+                "eps": fiscal_growth_rates["earnings"],
+            },
+        },
+        "earningsGrowthRate": fiscal_growth_rates["earnings"],
+        "epsGrowthRate": fiscal_growth_rates["earnings"],
+        "fcfGrowthRate": fiscal_growth_rates["fcf"],
         "cagr": {
-            **{k: 0.0 for k in ["TTM", "1Y", "3Y", "5Y", "7Y", "10Y"]},
+            **{k: 0.0 for k in TIME_FRAMES},
             **price_cagrs,
         },
         "peRatio": pe,
         "priceFcfRatio": price_fcf_ratio,
+        "fcfPayoutRatio": fcf_payout_ratio,
+        "cash": cash,
+        "totalDebt": total_debt,
+        "netDebt": net_debt,
+        "netDebtFcfRatio": net_debt_fcf_ratio,
     }
 
     _set_cached(cache_key, result)

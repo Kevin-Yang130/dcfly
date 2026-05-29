@@ -4,6 +4,7 @@ import { StockMetrics } from "./components/stock-metrics";
 import { DCFCalculator } from "./components/dcf-calculator";
 import { AuthPanel } from "./components/auth-panel";
 import { SavedStocksPanel } from "./components/saved-stocks-panel";
+import { DCFlyLogo } from "./components/dcfly-logo";
 import type { Stock } from "./components/stock-search";
 import {
   clearAuthToken,
@@ -61,9 +62,7 @@ export default function App() {
     setAppError(null);
 
     if (user) {
-      recordRecentlySeen(stock).catch(() => {
-        // Recently seen is helpful, but it should never block valuation.
-      });
+      recordRecentlySeen(stock).catch(() => {});
     }
   };
 
@@ -117,92 +116,109 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
-      {/* Grid Background */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-30"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-            linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px'
-        }}
-      />
+    <div className="min-h-screen flex flex-col bg-paper text-ink">
+      {/* Top navigation */}
+      <header className="sticky top-0 z-30 border-b border-hairline bg-paper/85 backdrop-blur">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-5 lg:px-8">
+          <div className="flex items-center gap-2.5">
+            <DCFlyLogo className="h-7 w-7" />
+            <div className="flex items-baseline gap-2">
+              <span className="text-[1.05rem] font-semibold tracking-[-0.015em] text-ink">
+                Auto<span className="text-accent">DCF</span>
+              </span>
+              <span className="hidden text-[11px] font-medium uppercase tracking-[0.14em] text-ink-subtle sm:block">
+                Valuation Studio
+              </span>
+            </div>
+          </div>
+          <AuthPanel
+            user={user}
+            open={authOpen}
+            onOpenChange={setAuthOpen}
+            onAuthenticated={setUser}
+            onLogout={handleLogout}
+          />
+        </div>
+      </header>
 
-      <div className="absolute right-4 top-4 z-20 sm:right-8 sm:top-6">
-        <AuthPanel
-          user={user}
-          open={authOpen}
-          onOpenChange={setAuthOpen}
-          onAuthenticated={setUser}
-          onLogout={handleLogout}
-        />
-      </div>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 relative z-10">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-5 pb-16 pt-10 lg:px-8">
         {appError && (
-          <div className="max-w-3xl mx-auto rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mx-auto mb-8 max-w-2xl rounded-md border border-bear/30 bg-bear-soft px-4 py-3 text-sm text-bear-ink">
             {appError}
           </div>
         )}
 
-        {user && (
-          <SavedStocksPanel
-            savedStocks={savedStocks}
-            selectedSymbol={selectedStock?.symbol}
-            isLoading={isLoadingSaved}
-            onSelectSymbol={handleSelectSavedStock}
-          />
-        )}
-
-        {/* Search Section - Centered and Minimal */}
         {!selectedStock && (
-          <section className="flex items-center justify-center min-h-[60vh]">
+          <section className="flex min-h-[60vh] items-center justify-center">
             <div className="w-full max-w-2xl text-center">
-              <h2 className="text-gray-900 mb-3">Search for a Stock</h2>
-              <p className="text-gray-600 mb-8">
-                Enter a stock symbol to begin your DCF valuation
+              <p className="eyebrow mb-5">Discounted Cash Flow Analysis</p>
+              <h1 className="font-serif text-ink mb-4 text-[3.25rem] leading-[1] tracking-[-0.025em]">
+                Find what a stock is{" "}
+                <span className="italic text-accent">truly worth.</span>
+              </h1>
+              <p className="mx-auto mb-10 max-w-md text-[0.95rem] leading-relaxed text-ink-muted">
+                Search any public company to pull live fundamentals and run a
+                transparent DCF valuation in seconds.
               </p>
               <StockSearch onSelectStock={handleSelectStock} />
+
+              {user && savedStocks.length > 0 && (
+                <div className="mt-12">
+                  <SavedStocksPanel
+                    savedStocks={savedStocks}
+                    selectedSymbol={selectedStock?.symbol}
+                    isLoading={isLoadingSaved}
+                    onSelectSymbol={handleSelectSavedStock}
+                    variant="inline"
+                  />
+                </div>
+              )}
             </div>
           </section>
         )}
 
-        {/* Search Section - Top aligned when stock is selected */}
         {selectedStock && (
-          <section className="space-y-4">
-            <StockSearch onSelectStock={handleSelectStock} />
-          </section>
-        )}
+          <div className="space-y-8">
+            <section>
+              <StockSearch onSelectStock={handleSelectStock} />
+            </section>
 
-        {/* Stock Metrics Section */}
-        {selectedStock && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StockMetrics
-              stock={selectedStock}
-              isSaved={selectedIsSaved}
-              isSaving={isSavingStock}
-              onToggleSave={handleToggleSave}
-            />
-          </section>
-        )}
+            {user && (
+              <SavedStocksPanel
+                savedStocks={savedStocks}
+                selectedSymbol={selectedStock?.symbol}
+                isLoading={isLoadingSaved}
+                onSelectSymbol={handleSelectSavedStock}
+              />
+            )}
 
-        {/* DCF Calculator Section */}
-        {selectedStock && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <DCFCalculator stock={selectedStock} />
-          </section>
+            <section className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <StockMetrics
+                stock={selectedStock}
+                isSaved={selectedIsSaved}
+                isSaving={isSavingStock}
+                onToggleSave={handleToggleSave}
+              />
+            </section>
+
+            <section className="animate-in fade-in slide-in-from-bottom-2 duration-700">
+              <DCFCalculator stock={selectedStock} />
+            </section>
+          </div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white/80 backdrop-blur-sm border-t border-gray-200 mt-20 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-sm text-gray-500">
-            DCFly • Intelligent Stock Valuation
-          </p>
+      <footer className="border-t border-hairline">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-2 px-5 py-6 text-xs text-ink-subtle sm:flex-row sm:items-center lg:px-8">
+          <div className="flex items-center gap-2">
+            <DCFlyLogo className="h-4 w-4" />
+            <span className="font-medium text-ink-muted">AutoDCF</span>
+            <span aria-hidden>·</span>
+            <span>Intelligent stock valuation</span>
+          </div>
+          <span>
+            Estimates only — not investment advice.
+          </span>
         </div>
       </footer>
     </div>

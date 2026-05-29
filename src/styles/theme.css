@@ -1,86 +1,152 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
+  --font-size: 15px;
+
+  /* Clean white surfaces */
+  --paper: #ffffff;
+  --paper-elevated: #ffffff;
+  --paper-soft: #f8faf8;          /* faint green-tinted off-white */
+  --paper-tint: #f1f8f3;          /* subtle green wash for sections */
+
+  /* Ink — warm-neutral so green pops, no pure black harshness */
+  --ink: #0b1f17;
+  --ink-soft: #1f2a24;
+  --ink-muted: #5b6a63;
+  --ink-subtle: #94a39c;
+
+  /* Hairlines for refined separation */
+  --hairline: rgba(11, 31, 23, 0.08);
+  --hairline-strong: rgba(11, 31, 23, 0.16);
+
+  /* Brand: refined emerald — investor green */
+  --accent: #059669;              /* emerald 600 */
+  --accent-hover: #047857;        /* emerald 700 */
+  --accent-deep: #064e3b;         /* emerald 900 */
+  --accent-soft: #ecfdf5;         /* emerald 50 */
+  --accent-tint: #d1fae5;         /* emerald 100 */
+  --accent-ink: #064e3b;
+
+  /* Investor semantics */
+  --bull: #059669;                /* same emerald — money green */
+  --bull-soft: #ecfdf5;
+  --bull-ink: #064e3b;
+  --bear: #b91c1c;                /* restrained crimson */
+  --bear-soft: #fef2f2;
+  --bear-ink: #7f1d1d;
+
+  /* Secondary data series (earnings vs FCF, present value vs nominal) */
+  --neutral-data: #334155;        /* slate 700 — quiet contrast against green */
+  --neutral-data-soft: #e2e8f0;
+
+  /* shadcn token bridge */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-elevated);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-elevated);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--paper-tint);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-soft);
+  --muted-foreground: var(--ink-muted);
+  --accent-foreground: var(--accent-ink);
+  --destructive: var(--bear);
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
+  --border: var(--hairline);
   --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --input-background: #ffffff;
+  --switch-background: #d1d5db;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --ring: rgba(5, 150, 105, 0.32);
+  --chart-1: var(--accent);
+  --chart-2: #047857;
+  --chart-3: var(--neutral-data);
+  --chart-4: #10b981;
+  --chart-5: #6ee7b7;
+  --radius: 0.5rem;
+  --sidebar: var(--paper-elevated);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--paper-tint);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--ring);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --paper: #0a1410;
+  --paper-elevated: #0f1c16;
+  --paper-soft: #122218;
+  --paper-tint: #15291f;
+  --ink: #ecfdf5;
+  --ink-soft: #d1fae5;
+  --ink-muted: #9ca8a2;
+  --ink-subtle: #6b7770;
+  --hairline: rgba(236, 253, 245, 0.1);
+  --hairline-strong: rgba(236, 253, 245, 0.2);
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-soft: #112d22;
+  --accent-tint: #1a3d2e;
+  --accent-ink: #a7f3d0;
+  --bull: #10b981;
+  --bull-soft: #112d22;
+  --bull-ink: #a7f3d0;
+  --bear: #ef4444;
+  --bear-soft: #2c1414;
+  --bear-ink: #fca5a5;
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-elevated);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-elevated);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: #052e1f;
+  --secondary: var(--paper-tint);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-soft);
+  --muted-foreground: var(--ink-muted);
+  --destructive: var(--bear);
+  --destructive-foreground: #ffffff;
+  --border: var(--hairline);
+  --input: transparent;
+  --input-background: var(--paper-soft);
+  --ring: rgba(16, 185, 129, 0.4);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-paper-elevated: var(--paper-elevated);
+  --color-paper-soft: var(--paper-soft);
+  --color-paper-tint: var(--paper-tint);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-ink: var(--accent-ink);
+  --color-bull: var(--bull);
+  --color-bull-soft: var(--bull-soft);
+  --color-bull-ink: var(--bull-ink);
+  --color-bear: var(--bear);
+  --color-bear-soft: var(--bear-soft);
+  --color-bear-ink: var(--bear-ink);
+  --color-neutral-data: var(--neutral-data);
+  --color-neutral-data-soft: var(--neutral-data-soft);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -91,7 +157,6 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -105,10 +170,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -117,65 +182,117 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Source Serif 4", "Source Serif Pro", ui-serif, "New York", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
   }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
 
   html {
     font-size: var(--font-size);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+    /* Inter: cv11 = single-story g, ss01 = open 4, tnum/lnum for tabular lining figures */
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    letter-spacing: -0.011em;
+  }
+
+  ::selection {
+    background-color: var(--accent-tint);
+    color: var(--accent-ink);
+  }
+
+  /* Source Serif 4 — display, with optical sizing */
+  .font-serif {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.018em;
+    font-optical-sizing: auto;
+  }
+
+  .font-display {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.022em;
+    font-optical-sizing: auto;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum", "lnum";
   }
 
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-family: var(--font-serif);
+    font-size: 2.25rem;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.022em;
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-family: var(--font-serif);
+    font-size: 1.75rem;
+    font-weight: 500;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
   }
 
   h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.008em;
   }
 
   h4 {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.005em;
   }
 
   label {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--ink-soft);
+    letter-spacing: -0.005em;
   }
 
   button {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: -0.008em;
   }
 
   input {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-normal);
-    line-height: 1.5;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  }
+
+  /* Refined section headings — uppercase eyebrow style */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-feature-settings: "ss01";
   }
 }
